@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-white;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Telegram WebApp specific styles */
+  .tg-app {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl;
+  }
+  
+  .card-hover:hover {
+    box-shadow: 0 25px 50px -12px rgba(139, 92, 246, 0.1);
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 active:scale-95 transition-all duration-200 rounded-xl font-medium px-4 py-3 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface hover:bg-surface-light active:scale-95 transition-all duration-200 rounded-xl font-medium px-4 py-3 border border-border;
+  }
+
+  .input-field {
+    @apply bg-surface border border-border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  .tab-active {
+    @apply text-primary-500 border-b-2 border-primary-500;
+  }
+
+  .progress-bar {
+    @apply h-2 bg-surface rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-primary-500 to-accent rounded-full transition-all duration-1000;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary-600;
+}
