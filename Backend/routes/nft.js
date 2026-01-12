@@ -1,107 +1,95 @@
+// Backend/routes/nft.js
 const express = require('express')
 const router = express.Router()
 const { verifyToken } = require('../middleware/auth')
 const { getDB } = require('../db/init')
 
-// Buy an item
 router.post('/buy', verifyToken, async (req, res) => {
     try {
         const userId = req.telegramUser.id
         const { itemId } = req.body
 
-        if (!itemId) {
-            return res.status(400).json({ error: 'Missing itemId' })
-        }
+        if (!itemId) return res.status(400).json({ error: 'Missing itemId' })
 
         const db = getDB()
 
-        // 1. Get user (buyer) internal ID and check balance
-        db.get('SELECT * FROM users WHERE telegram_id = ?', [userId], (err, buyer) => {
-            if (err) {
-                console.error('Database error:', err)
-                return res.status(500).json({ error: 'Database error' })
-            }
+        // Get internal user ID first
+        db.get('SELECT id FROM users WHERE telegram_id = ?', [userId], (err, user) => {
+            if (err || !user) return res.status(404).json({ error: 'User not found' });
+            
+            const buyerId = user.id;
 
-            if (!buyer) {
-                return res.status(404).json({ error: 'User not found' })
-            }
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION');
 
-            // 2. Get item and check availability/price
-            db.get('SELECT * FROM items WHERE id = ?', [itemId], (itemErr, item) => {
-                if (itemErr) {
-                    console.error('Database error:', itemErr)
-                    return res.status(500).json({ error: 'Database error' })
-                }
+                // 1. Get Item Price & Check if it exists/is not owned
+                db.get('SELECT price_ton, owner_id FROM items WHERE id = ?', [itemId], (err, item) => {
+                    if (err || !item) {
+                        db.run('ROLLBACK');
+                        return res.status(404).json({ error: 'Item not found' });
+                    }
+                    if (item.owner_id !== null) {
+                        db.run('ROLLBACK');
+                        return res.status(400).json({ error: 'Item already owned' });
+                    }
 
-                if (!item) {
-                    return res.status(404).json({ error: 'Item not found' })
-                }
+                    const price = item.price_ton;
 
-                if (item.owner_id) {
-                    return res.status(400).json({ error: 'Item is already owned' })
-                }
-
-                // Check balance
-                if (buyer.ton_balance < item.price_ton) {
-                    return res.status(400).json({ error: 'Insufficient funds' })
-                }
-
-                // 3. Purchase Transaction
-                // Note: SQLite doesn't have internal transaction block support easily in node-sqlite3 without serialize, 
-                // but we will do best effort with sequential callbacks for prototype.
-                // In production, use `db.run('BEGIN TRANSACTION')` ... `COMMIT`
-
-                db.serialize(() => {
-                    db.run('BEGIN TRANSACTION')
-
-                    // Deduct balance from buyer
-                    db.run('UPDATE users SET ton_balance = ton_balance - ? WHERE id = ?', [item.price_ton, buyer.id], function (updateErr) {
-                        if (updateErr) {
-                            db.run('ROLLBACK')
-                            console.error('Balance update error:', updateErr)
-                            return res.status(500).json({ error: 'Transaction failed' })
-                        }
-
-                        // Transfer ownership
-                        db.run('UPDATE items SET owner_id = ?, listed_at = NULL WHERE id = ?', [buyer.id, itemId], function (itemUpdateErr) {
-                            if (itemUpdateErr) {
-                                db.run('ROLLBACK')
-                                console.error('Item update error:', itemUpdateErr)
-                                return res.status(500).json({ error: 'Transaction failed' })
+                    // 2. Deduct Balance ATOMICALLY
+                    // Only update if balance is sufficient (ton_balance >= price)
+                    db.run(
+                        'UPDATE users SET ton_balance = ton_balance - ? WHERE id = ? AND ton_balance >= ?',
+                        [price, buyerId, price],
+                        function (err) {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                return res.status(500).json({ error: 'Database error' });
+                            }
+                            
+                            // If no rows changed, balance was insufficient
+                            if (this.changes === 0) {
+                                db.run('ROLLBACK');
+                                return res.status(400).json({ error: 'Insufficient funds' });
                             }
 
-                            // Update statistics (optional but good for season)
-                            db.run(`UPDATE season_stats 
-                                    SET volume_ton = volume_ton + ?, items_bought = items_bought + 1 
-                                    WHERE user_id = ? AND season_number = 2`,
-                                [item.price_ton, buyer.id], (statsErr) => {
-                                    // Ignore stats error for rollback hard constraint? 
-                                    // Let's keep it safe.
-                                    if (statsErr) console.warn('Stats update failed', statsErr)
-                                })
+                            // 3. Transfer Ownership ATOMICALLY
+                            // Ensure strictly that owner_id IS NULL to prevent double buys
+                            db.run(
+                                'UPDATE items SET owner_id = ?, listed_at = NULL WHERE id = ? AND owner_id IS NULL',
+                                [buyerId, itemId],
+                                function (err) {
+                                    if (err) {
+                                        db.run('ROLLBACK');
+                                        return res.status(500).json({ error: 'Database error' });
+                                    }
 
-                            db.run('COMMIT')
+                                    // If no rows changed here, someone else bought it just now
+                                    if (this.changes === 0) {
+                                        db.run('ROLLBACK'); // Rollback the money deduction!
+                                        return res.status(409).json({ error: 'Item just sold to someone else' });
+                                    }
 
-                            res.json({
-                                success: true,
-                                message: 'Item purchased successfully',
-                                item: {
-                                    id: item.id,
-                                    name: item.name,
-                                    price: item.price_ton
-                                },
-                                newBalance: buyer.ton_balance - item.price_ton
-                            })
-                        })
-                    })
-                })
-            })
-        })
+                                    // 4. Update stats (optional, safe to fail or be approximate)
+                                    db.run(
+                                        `UPDATE season_stats 
+                                         SET volume_ton = volume_ton + ?, items_bought = items_bought + 1 
+                                         WHERE user_id = ? AND season_number = 2`,
+                                        [price, buyerId]
+                                    );
 
+                                    db.run('COMMIT');
+                                    res.json({ success: true, message: 'Purchased successfully' });
+                                }
+                            );
+                        }
+                    );
+                });
+            });
+        });
     } catch (error) {
-        console.error('Buy item error:', error)
-        res.status(500).json({ error: 'Internal server error' })
+        console.error(error);
+        res.status(500).json({ error: 'Internal error' });
     }
-})
+});
 
-module.exports = router
+module.exports = router;
