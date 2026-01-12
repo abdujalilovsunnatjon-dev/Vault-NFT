@@ -1,19 +1,24 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { AnimatePresence } from "framer-motion"
-import { TelegramProvider } from "./contexts/TelegramContext"
-import Layout from "./components/Layout"
-import Store from "./pages/store"
-import MyGifts from "./pages/MyGifts"
-import Season from "./pages/Season"
+import { useEffect, useState } from "react"
+import { Routes, Route } from "react-router-dom"
+
 import Profile from "./pages/Profile"
 import Wallet from "./pages/Wallet"
-import SettingsModal from "./components/SettingsModal"
-import { useState, useEffect } from "react"
-import { initTelegram } from "./lib/telegram"
-import { useTelegram } from './contexts/TelegramContext'
+import Store from "./pages/store"
+import Season from "./pages/Season"
 
-const App = () => {
+import BottomNav from "./components/BottomNav"
+import SettingsModal from "./components/SettingsModal"
+
+import { initTelegram } from "./lib/telegram"
+import { useTelegram } from "./contexts/TelegramContext"
+
+export default function App() {
   const { isTelegram, isLoading } = useTelegram()
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  useEffect(() => {
+    initTelegram()
+  }, [])
 
   if (isLoading) return null
 
@@ -25,47 +30,21 @@ const App = () => {
     )
   }
 
-  return <YourRoutes />
-}
-
-
-function App() {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-
-  useEffect(() => {
-    initTelegram()
-      .then(res => {
-        console.log("TG USER FINAL:", res.user)
-      })
-      .catch(err => {
-        console.log("TG INIT ERROR:", err.message)
-      })
-  }, [])
-
   return (
-    <TelegramProvider>
-      <Router>
-        <div className="min-h-screen bg-background text-white">
-          <Layout onSettingsOpen={() => setIsSettingsOpen(true)} />
+    <>
+      <Routes>
+        <Route path="/" element={<Store />} />
+        <Route path="/wallet" element={<Wallet />} />
+        <Route path="/season" element={<Season />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
 
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/" element={<Store />} />
-              <Route path="/gifts" element={<MyGifts />} />
-              <Route path="/season" element={<Season />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/wallet" element={<Wallet />} />
-            </Routes>
-          </AnimatePresence>
+      <BottomNav />
 
-          <SettingsModal
-            isOpen={isSettingsOpen}
-            onClose={() => setIsSettingsOpen(false)}
-          />
-        </div>
-      </Router>
-    </TelegramProvider>
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+    </>
   )
 }
-
-export default App
