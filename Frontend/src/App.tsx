@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion"
 import { TelegramProvider } from "./contexts/TelegramContext"
 import Layout from "./components/Layout"
 
-import Store from "./pages/store"
+import Store from "./pages/Store"
 import MyGifts from "./pages/Mygifts"
 import Season from "./pages/Season"
 import Profile from "./pages/Profile"
