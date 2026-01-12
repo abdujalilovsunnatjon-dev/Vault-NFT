@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion"
 import { TelegramProvider } from "./contexts/TelegramContext"
 import Layout from "./components/Layout"
 
-import Store from "./pages/Store"
+import Store from "./pages/store"
 import MyGifts from "./pages/MyGifts"
 import Season from "./pages/Season"
 import Profile from "./pages/Profile"
@@ -34,7 +34,7 @@ function App() {
 
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/" element={<Store />} />
+              <Route path="/store" element={<Store />} />
               <Route path="/gifts" element={<MyGifts />} />
               <Route path="/season" element={<Season />} />
               <Route path="/profile" element={<Profile />} />
