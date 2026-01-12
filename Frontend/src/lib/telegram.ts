@@ -59,10 +59,10 @@ export const initTelegram = async (): Promise<{
 
   const user = {
     id: userRaw?.id ?? 0,
-    firstName: userRaw?.first_name ?? '',
-    lastName: userRaw?.last_name,
+    firstName: userRaw?.firstName ?? '',
+    lastName: userRaw?.lastName,
     username: userRaw?.username,
-    photoUrl: userRaw?.photo_url,
+    photoUrl: userRaw?.photoUrl,
   }
 
   return { user, initData: initData ?? null }
