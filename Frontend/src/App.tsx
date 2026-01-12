@@ -10,6 +10,24 @@ import Wallet from "./pages/Wallet"
 import SettingsModal from "./components/SettingsModal"
 import { useState, useEffect } from "react"
 import { initTelegram } from "./lib/telegram"
+import { useTelegram } from './contexts/TelegramContext'
+
+const App = () => {
+  const { isTelegram, isLoading } = useTelegram()
+
+  if (isLoading) return null
+
+  if (!isTelegram) {
+    return (
+      <div className="text-white p-4">
+        Open this app from Telegram
+      </div>
+    )
+  }
+
+  return <YourRoutes />
+}
+
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
