@@ -34,7 +34,7 @@ function App() {
 
           <AnimatePresence mode="wait">
             <Routes>
-              <Route path="/store" element={<Store />} />
+              <Route path="/" element={<Store />} />
               <Route path="/gifts" element={<MyGifts />} />
               <Route path="/season" element={<Season />} />
               <Route path="/profile" element={<Profile />} />
