@@ -28,7 +28,7 @@ function App() {
     <TelegramProvider>
       <Router>
         <div className="min-h-screen bg-background text-white">
-          <Layout onSettings={() => setIsSettingsOpen(true)} />
+          <Layout onSettingsOpen={() => setIsSettingsOpen(true)} />
 
           <AnimatePresence mode="wait">
             <Routes>
@@ -41,7 +41,7 @@ function App() {
           </AnimatePresence>
 
           <SettingsModal
-            open={isSettingsOpen}
+            isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
           />
         </div>
