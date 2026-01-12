@@ -85,5 +85,11 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     init()
   }, [])
 
+  const isTelegram = Boolean(
+  typeof window !== "undefined" &&
+  (window as any).Telegram?.WebApp
+)
+
+
   return <TelegramContext.Provider value={state}>{children}</TelegramContext.Provider>
 }
